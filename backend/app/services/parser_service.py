@@ -14,7 +14,7 @@ import tree_sitter_c
 import tree_sitter_ruby
 import tree_sitter_php
 
-from app.models.schemas import CodeSymbol, ParsedFile
+from app.models.schemas import CodeSymbol, ParsedFile, DependencyGraph, DependencyNode, DependencyEdge
 from app.utils.file_utils import should_include, detect_language
 
 LANGUAGE_LOADER = {
@@ -219,3 +219,63 @@ class ParserService:
             parsed = self._parse_with_tree_sitter(file_path, language)
             parsed_files.append(parsed)
         return parsed_files
+
+    def build_dependency_graph(self, parsed_files: list[ParsedFile]) -> DependencyGraph:
+        file_exports: dict[str, list[str]] = {}
+        file_imports: dict[str, list[tuple[str, list[str]]]] = {}
+
+        for pf in parsed_files:
+            exports = [s.name for s in pf.symbols if s.type in ("function", "class", "method")]
+            file_exports[pf.file_path] = exports
+
+            imports = []
+            for s in pf.symbols:
+                if s.type == "import":
+                    imports.append((s.name, []))
+            file_imports[pf.file_path] = imports
+
+        nodes = [
+            DependencyNode(file_path=fp, exports=exports)
+            for fp, exports in file_exports.items()
+        ]
+
+        edges = []
+        for source_path, imports in file_imports.items():
+            for import_name, _ in imports:
+                target = self._resolve_import(import_name, source_path, file_exports)
+                if target and target != source_path:
+                    edges.append(DependencyEdge(
+                        source=source_path,
+                        target=target,
+                        imported_symbols=[import_name],
+                    ))
+
+        return DependencyGraph(nodes=nodes, edges=edges)
+
+    def _resolve_import(
+        self, import_name: str, source_path: str, file_exports: dict[str, list[str]]
+    ) -> Optional[str]:
+        source_dir = str(Path(source_path).parent)
+        import_parts = import_name.split(".")
+
+        candidates = []
+        for fp in file_exports:
+            if fp == source_path:
+                continue
+            if fp.startswith(source_dir):
+                fp_stem = Path(fp).stem
+                if fp_stem == import_parts[-1]:
+                    candidates.append(fp)
+
+        if not candidates:
+            for fp in file_exports:
+                fp_stem = Path(fp).stem
+                if fp_stem == import_parts[-1]:
+                    candidates.append(fp)
+
+        if not candidates and import_parts:
+            for fp in file_exports:
+                if import_parts[-1] in file_exports.get(fp, []):
+                    candidates.append(fp)
+
+        return candidates[0] if candidates else None
