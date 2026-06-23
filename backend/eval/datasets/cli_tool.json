@@ -1,0 +1,40 @@
+{
+  "repo_id": "eval_cli_tool",
+  "description": "A command-line file search tool with regex and glob pattern support",
+  "files": {
+    "cli.py": "#!/usr/bin/env python3\nimport argparse\nimport os\nimport re\nimport sys\nfrom pathlib import Path\n\ndef search_files(directory: str, pattern: str, regex: bool = False, recursive: bool = True) -> list[Path]:\n    \"\"\"Search for files matching a pattern in a directory.\"\"\"\n    results = []\n    root = Path(directory)\n    if not root.exists():\n        raise FileNotFoundError(f\"Directory not found: {directory}\")\n    \n    globber = root.rglob if recursive else root.glob\n    for path in globber(\"*\"):\n        if path.is_file():\n            if regex:\n                if re.search(pattern, path.name):\n                    results.append(path)\n            else:\n                if pattern in path.name:\n                    results.append(path)\n    return results\n\ndef search_content(directory: str, pattern: str, regex: bool = False, recursive: bool = True) -> list[tuple[Path, int, str]]:\n    \"\"\"Search for files containing text matching a pattern.\"\"\"\n    results = []\n    root = Path(directory)\n    if not root.exists():\n        raise FileNotFoundError(f\"Directory not found: {directory}\")\n    \n    globber = root.rglob if recursive else root.glob\n    for path in globber(\"*\"):\n        if not path.is_file():\n            continue\n        try:\n            content = path.read_text(errors=\"ignore\")\n            if regex:\n                for i, line in enumerate(content.split(\"\\n\"), 1):\n                    if re.search(pattern, line):\n                        results.append((path, i, line.strip()))\n            else:\n                if pattern in content:\n                    for i, line in enumerate(content.split(\"\\n\"), 1):\n                        if pattern in line:\n                            results.append((path, i, line.strip()))\n        except Exception:\n            continue\n    return results\n\ndef main():\n    parser = argparse.ArgumentParser(description=\"Search files by name or content\")\n    parser.add_argument(\"directory\", help=\"Directory to search in\")\n    parser.add_argument(\"pattern\", help=\"Search pattern\")\n    parser.add_argument(\"-r\", \"--regex\", action=\"store_true\", help=\"Use regex pattern\")\n    parser.add_argument(\"-c\", \"--content\", action=\"store_true\", help=\"Search file content instead of names\")\n    parser.add_argument(\"--no-recursive\", action=\"store_true\", help=\"Don't search subdirectories\")\n    \n    args = parser.parse_args()\n    recursive = not args.no_recursive\n    \n    if args.content:\n        results = search_content(args.directory, args.pattern, args.regex, recursive)\n        for path, line_num, text in results[:50]:\n            print(f\"{path}:{line_num}: {text}\")\n    else:\n        results = search_files(args.directory, args.pattern, args.regex, recursive)\n        for path in results[:50]:\n            print(str(path))\n    \n    print(f\"\\nFound {len(results)} result(s)\")\n\nif __name__ == \"__main__\":\n    main()\n",
+    "utils/helpers.py": "import os\nfrom pathlib import Path\n\ndef get_file_size(path: Path) -> int:\n    \"\"\"Get file size in bytes.\"\"\"\n    return path.stat().st_size\n\ndef is_text_file(path: Path) -> bool:\n    \"\"\"Check if a file appears to be text.\"\"\"\n    try:\n        path.read_bytes()[:1024]\n        return True\n    except Exception:\n        return False\n\ndef count_lines(path: Path) -> int:\n    \"\"\"Count lines in a file.\"\"\"\n    return len(path.read_text(errors=\"ignore\").split(\"\\n\"))\n"
+  },
+  "questions": [
+    {
+      "question": "What is the main entry point of this tool?",
+      "expected_files": ["cli.py"],
+      "expected_symbols": ["main"],
+      "expected_answer_contains": "main()"
+    },
+    {
+      "question": "How do you search file contents with regex?",
+      "expected_files": ["cli.py"],
+      "expected_symbols": ["search_content"],
+      "expected_answer_contains": "search_content"
+    },
+    {
+      "question": "What command-line arguments are supported?",
+      "expected_files": ["cli.py"],
+      "expected_symbols": ["main"],
+      "expected_answer_contains": "regex"
+    },
+    {
+      "question": "How do you check if a file is text?",
+      "expected_files": ["utils/helpers.py"],
+      "expected_symbols": ["is_text_file"],
+      "expected_answer_contains": "is_text_file"
+    },
+    {
+      "question": "What happens if the search directory doesn't exist?",
+      "expected_files": ["cli.py"],
+      "expected_symbols": ["search_files", "search_content"],
+      "expected_answer_contains": "FileNotFoundError"
+    }
+  ]
+}

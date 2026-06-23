@@ -1,0 +1,40 @@
+{
+  "repo_id": "eval_auth_lib",
+  "description": "A simple Python authentication library with user login, token verification, and password hashing",
+  "files": {
+    "src/auth.py": "import hashlib\nimport jwt\nfrom datetime import datetime, timedelta\n\nSECRET_KEY = \"test-secret-key\"\n\ndef login_user(username: str, password: str) -> dict:\n    \"\"\"Authenticate user and return JWT token.\"\"\"\n    user = get_user_by_username(username)\n    if not user:\n        raise ValueError(\"User not found\")\n    if not verify_password(password, user[\"password_hash\"]):\n        raise ValueError(\"Invalid password\")\n    token = create_token(user[\"id\"])\n    return {\"token\": token, \"user_id\": user[\"id\"]}\n\ndef verify_token(token: str) -> dict:\n    \"\"\"Verify JWT token and return payload.\"\"\"\n    try:\n        payload = jwt.decode(token, SECRET_KEY, algorithms=[\"HS256\"])\n        return payload\n    except jwt.ExpiredSignatureError:\n        raise ValueError(\"Token expired\")\n    except jwt.InvalidTokenError:\n        raise ValueError(\"Invalid token\")\n\ndef create_token(user_id: int) -> str:\n    \"\"\"Create a JWT token for the given user ID.\"\"\"\n    payload = {\n        \"user_id\": user_id,\n        \"exp\": datetime.utcnow() + timedelta(hours=24),\n    }\n    return jwt.encode(payload, SECRET_KEY, algorithm=\"HS256\")\n\ndef hash_password(password: str) -> str:\n    \"\"\"Hash a password using SHA-256.\"\"\"\n    return hashlib.sha256(password.encode()).hexdigest()\n\ndef verify_password(password: str, password_hash: str) -> bool:\n    \"\"\"Verify a password against its hash.\"\"\"\n    return hash_password(password) == password_hash\n\ndef get_user_by_username(username: str) -> dict | None:\n    \"\"\"Look up a user by username. Mock implementation.\"\"\"\n    users = {\n        \"admin\": {\"id\": 1, \"password_hash\": hash_password(\"admin123\")},\n        \"user\": {\"id\": 2, \"password_hash\": hash_password(\"user123\")},\n    }\n    return users.get(username)\n",
+    "src/middleware.py": "from auth import verify_token\n\ndef AuthMiddleware(request):\n    \"\"\"Middleware that validates JWT tokens on protected routes.\"\"\"\n    token = request.headers.get(\"Authorization\", \"\").replace(\"Bearer \", \"\")\n    if not token:\n        return {\"error\": \"No token provided\"}, 401\n    try:\n        payload = verify_token(token)\n        request.user_id = payload[\"user_id\"]\n        return None\n    except ValueError as e:\n        return {\"error\": str(e)}, 401\n"
+  },
+  "questions": [
+    {
+      "question": "What function handles user login and what does it return?",
+      "expected_files": ["src/auth.py"],
+      "expected_symbols": ["login_user"],
+      "expected_answer_contains": "login_user"
+    },
+    {
+      "question": "How is JWT verification done?",
+      "expected_files": ["src/auth.py"],
+      "expected_symbols": ["verify_token"],
+      "expected_answer_contains": "verify_token"
+    },
+    {
+      "question": "What middleware protects routes?",
+      "expected_files": ["src/middleware.py"],
+      "expected_symbols": ["AuthMiddleware"],
+      "expected_answer_contains": "AuthMiddleware"
+    },
+    {
+      "question": "How are passwords hashed?",
+      "expected_files": ["src/auth.py"],
+      "expected_symbols": ["hash_password"],
+      "expected_answer_contains": "hash_password"
+    },
+    {
+      "question": "What is the token expiry duration?",
+      "expected_files": ["src/auth.py"],
+      "expected_symbols": ["create_token"],
+      "expected_answer_contains": "24 hours"
+    }
+  ]
+}

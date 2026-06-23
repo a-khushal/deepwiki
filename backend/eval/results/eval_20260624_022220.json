@@ -1,0 +1,11 @@
+{
+  "timestamp": "20260624_022220",
+  "elapsed_seconds": 17.6,
+  "metrics": {
+    "Hit Rate @ 5": 0.0,
+    "Mean Reciprocal Rank (MRR)": 0.0,
+    "Precision @ 5": 0.0,
+    "Answer Correctness": 0.0,
+    "Total Questions": 0
+  }
+}
