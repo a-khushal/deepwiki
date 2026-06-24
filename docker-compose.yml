@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - repos_data:/app/repos
+      - chroma_data:/app/chroma_data
+    env_file:
+      - ./backend/.env
+    environment:
+      - REPOS_DIR=/app/repos
+      - CHROMA_DIR=/app/chroma_data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  repos_data:
+  chroma_data:
