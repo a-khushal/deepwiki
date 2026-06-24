@@ -33,9 +33,19 @@ npm run dev  # → http://localhost:3000
 
 ## Architecture
 
-```
-backend/     FastAPI + ChromaDB + OpenAI (embed, chat, doc gen)
-frontend/    Next.js (Tailwind, shadcn/ui, mermaid diagrams)
+```mermaid
+graph TD
+    User["Browser"] --> FE["Next.js (Tailwind, shadcn)"]
+    FE --> API["FastAPI Backend"]
+    API --> Clone["Clone & Parse<br/>GitPython + tree-sitter"]
+    Clone --> Chunk["Semantic Chunking<br/>per symbol"]
+    Chunk --> Embed["OpenAI Embedding<br/>text-embedding-3-small"]
+    Embed --> DB[("ChromaDB<br/>vector store")]
+    DB --> RAG["RAG Chat<br/>retrieve + GPT-4o"]
+    API --> Wiki["Wiki Generation<br/>GPT-4o + mermaid dep graph"]
+    Wiki --> DB
+    API --> MCP["MCP Server<br/>JSON-RPC over SSE"]
+    RAG --> FE
 ```
 
 ## Features
