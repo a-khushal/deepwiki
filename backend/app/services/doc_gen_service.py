@@ -41,7 +41,13 @@ Return your response as valid JSON with this exact structure:
 
 ## Rules
 - Use valid markdown in content (headings, lists, code blocks, bold)
-- Use mermaid code blocks for diagrams in the Architecture section
+- You MUST include a mermaid code block in the Architecture section showing the module dependency flow, for example:
+  ```mermaid
+  graph TD
+      n1["main.py"]
+      n2["utils/helpers.py"]
+      n1 --> n2
+  ```
 - Be accurate and specific — reference actual file paths and symbols
 - Keep Overview to 2-3 paragraphs
 - Keep each section under 500 words
@@ -103,6 +109,14 @@ class DocGenService:
             content = response.choices[0].message.content or ""
             data = json.loads(content)
             sections = [DocSection(**s) for s in data.get("sections", [])]
+
+            dep_diagram = self._generate_dep_diagram(dep_graph)
+            if dep_diagram:
+                for s in sections:
+                    if s.title.lower() == "architecture":
+                        s.content += f"\n\n### Dependency Graph\n\n{dep_diagram}\n"
+                        break
+
             docs = RepoDocs(repo_id=repo_id, sections=sections)
             self._cache_docs(repo_id, docs)
             return docs
@@ -191,6 +205,33 @@ class DocGenService:
 
         except Exception as e:
             logger.warning("docs_cache_write_failed", error=str(e))
+
+    def _generate_dep_diagram(self, dep_graph: DependencyGraph) -> str:
+        if not dep_graph.edges:
+            return ""
+
+        lines = ["```mermaid", "graph TD"]
+        node_ids: dict[str, str] = {}
+        counter = 1
+
+        def label(p: str) -> str:
+            parts = p.split("/")
+            if len(parts) >= 3:
+                return f".../{parts[-2]}/{parts[-1]}"
+            return p
+
+        for e in dep_graph.edges[:20]:
+            for p in (e.source, e.target):
+                if p not in node_ids:
+                    node_ids[p] = f"n{counter}"
+                    lines.append(f'    {node_ids[p]}["{label(p)}"]')
+                    counter += 1
+
+        for e in dep_graph.edges[:20]:
+            lines.append(f"    {node_ids[e.source]} --> {node_ids[e.target]}")
+
+        lines.append("```")
+        return "\n".join(lines)
 
     def _build_dir_structure(self, repo_path: str) -> str:
         import os

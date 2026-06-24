@@ -59,24 +59,6 @@ function MermaidDiagram({ code }: { code: string }) {
   );
 }
 
-const hljsStyles = `
-  .hljs { color: #d4d4d8; background: transparent; }
-  .hljs-keyword { color: #a1a1aa; }
-  .hljs-string { color: #a1a1aa; }
-  .hljs-number { color: #d4d4d8; }
-  .hljs-comment { color: #52525b; font-style: italic; }
-  .hljs-function { color: #e4e4e7; }
-  .hljs-title { color: #e4e4e7; }
-  .hljs-built_in { color: #d4d4d8; }
-  .hljs-type { color: #a1a1aa; }
-  .hljs-literal { color: #d4d4d8; }
-  .hljs-attr { color: #a1a1aa; }
-  .hljs-attribute { color: #a1a1aa; }
-  .hljs-selector-tag { color: #a1a1aa; }
-  .hljs-meta { color: #52525b; }
-  .hljs-section { color: #e4e4e7; font-weight: bold; }
-`;
-
 function SectionRenderer({ section, isFirst }: { section: DocSection; isFirst: boolean }) {
   return (
     <section id={`s-${encodeURIComponent(section.title).toLowerCase()}`} className={isFirst ? "" : "mt-12 border-t border-white/10 pt-10"}>
@@ -186,7 +168,6 @@ export default function DocsPanel({ repoId }: DocsPanelProps) {
             <SectionRenderer key={s.title} section={s} isFirst={i === 0} />
           ))}
         </div>
-        <style>{hljsStyles}</style>
       </div>
     </div>
   );

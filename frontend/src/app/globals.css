@@ -3,6 +3,22 @@
 @import "shadcn/tailwind.css";
 @plugin "@tailwindcss/typography";
 
+.hljs { color: #d4d4d8; background: transparent; }
+.hljs-keyword { color: #a1a1aa; }
+.hljs-string { color: #a1a1aa; }
+.hljs-number { color: #d4d4d8; }
+.hljs-comment { color: #52525b; font-style: italic; }
+.hljs-function { color: #e4e4e7; }
+.hljs-title { color: #e4e4e7; }
+.hljs-built_in { color: #d4d4d8; }
+.hljs-type { color: #a1a1aa; }
+.hljs-literal { color: #d4d4d8; }
+.hljs-attr { color: #a1a1aa; }
+.hljs-attribute { color: #a1a1aa; }
+.hljs-selector-tag { color: #a1a1aa; }
+.hljs-meta { color: #52525b; }
+.hljs-section { color: #e4e4e7; font-weight: bold; }
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
