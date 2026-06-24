@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getStoredRepo } from "@/types";
+import { getStoredRepo, type RepoMetadata } from "@/types";
 import { getIndexedRepos } from "@/lib/api";
 import LoadingState from "@/components/LoadingState";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { ArrowLeft, ExternalLink, GitFork } from "lucide-react";
 export default function RepoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const [ready, setReady] = useState(() => getIndexedRepos().includes(id));
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codeViewer, setCodeViewer] = useState<{
     filePath: string;
@@ -23,7 +23,14 @@ export default function RepoPage({ params }: { params: Promise<{ id: string }> }
     startLine: number;
   } | null>(null);
 
-  const metadata = getStoredRepo(id);
+  const [metadata, setMetadata] = useState<RepoMetadata | null>(null);
+
+  useEffect(() => {
+    if (getIndexedRepos().includes(id)) {
+      setReady(true);
+      setMetadata(getStoredRepo(id));
+    }
+  }, [id]);
 
   const handleComplete = useCallback(() => setReady(true), []);
   const handleError = useCallback(setError, []);
