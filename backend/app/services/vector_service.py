@@ -1,3 +1,5 @@
+import uuid
+
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from chromadb.errors import NotFoundError
@@ -27,7 +29,7 @@ class VectorService:
 
         collection = self._get_or_create_collection(repo_id)
 
-        ids = [f"{chunk.file_path}_{chunk.start_line}_{chunk.chunk_index}" for chunk in chunks]
+        ids = [str(uuid.uuid4()) for _ in chunks]
         documents = [chunk.content for chunk in chunks]
         metadatas = [
             {

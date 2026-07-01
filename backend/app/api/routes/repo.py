@@ -51,6 +51,28 @@ async def get_status(repo_id: str):
     return indexing_service.get(repo_id)
 
 
+@router.get("/{repo_id}/files")
+async def get_repo_files(repo_id: str):
+    if not repo_service.repo_exists(repo_id):
+        raise HTTPException(status_code=404, detail="Repo not found")
+    return repo_service.get_file_tree(repo_id)
+
+
+@router.get("/{repo_id}/file")
+async def get_repo_file(repo_id: str, path: str):
+    if not repo_service.repo_exists(repo_id):
+        raise HTTPException(status_code=404, detail="Repo not found")
+    repo_path = repo_service.get_repo_path(repo_id)
+    file_path = repo_path / path
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        content = file_path.read_text("utf-8", errors="replace")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to read file")
+    return {"path": path, "content": content}
+
+
 @router.delete("/{repo_id}")
 async def delete_repo(repo_id: str):
     repo_service.delete_repo(repo_id)

@@ -48,6 +48,13 @@ export interface StreamEvent {
   error?: string;
 }
 
+export interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  children?: FileNode[];
+}
+
 export interface ExampleRepo {
   url: string;
   label: string;

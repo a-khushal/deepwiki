@@ -26,6 +26,28 @@ export default function ChatPanel({ repoId, onViewSource }: ChatPanelProps) {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loaded = useRef(false);
+  const streamId = useRef(0);
+
+  const storageKey = `chat:${repoId}`;
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored) as ChatMessage[];
+        setMessages(parsed);
+        setShowSuggestions(false);
+      }
+    } catch {}
+    loaded.current = true;
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (loaded.current) {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    }
+  }, [messages, storageKey]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,6 +57,7 @@ export default function ChatPanel({ repoId, onViewSource }: ChatPanelProps) {
     if (!question.trim() || streaming) return;
     setShowSuggestions(false);
 
+    const sid = ++streamId.current;
     setMessages((prev) => [
       ...prev,
       { id: Date.now().toString(), role: "user", content: question.trim() },
@@ -62,6 +85,7 @@ export default function ChatPanel({ repoId, onViewSource }: ChatPanelProps) {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (streamId.current !== sid) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";

@@ -4,6 +4,8 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
+from app.utils.file_utils import should_include, INCLUDE_EXTENSIONS, EXCLUDE_DIRS, EXCLUDE_FILES, MAX_FILE_SIZE
+
 import git
 import structlog
 
@@ -180,3 +182,43 @@ class RepoService:
 
     def get_repo_path(self, repo_id: str) -> Path:
         return self._get_repo_path(repo_id)
+
+    def get_file_tree(self, repo_id: str) -> list[dict]:
+        repo_path = self._get_repo_path(repo_id)
+        if not repo_path.exists():
+            return []
+
+        def build_tree(path: Path) -> list[dict]:
+            entries = []
+            for item in sorted(path.iterdir()):
+                if item.name.startswith("."):
+                    continue
+                if item.name in EXCLUDE_DIRS:
+                    continue
+                if item.is_dir():
+                    children = build_tree(item)
+                    if children:
+                        entries.append({
+                            "name": item.name,
+                            "path": str(item.relative_to(repo_path)),
+                            "type": "dir",
+                            "children": children,
+                        })
+                elif item.is_file():
+                    if item.suffix.lower() not in INCLUDE_EXTENSIONS:
+                        continue
+                    if item.name in EXCLUDE_FILES:
+                        continue
+                    try:
+                        if item.stat().st_size > MAX_FILE_SIZE:
+                            continue
+                    except OSError:
+                        continue
+                    entries.append({
+                        "name": item.name,
+                        "path": str(item.relative_to(repo_path)),
+                        "type": "file",
+                    })
+            return entries
+
+        return build_tree(repo_path)

@@ -1,4 +1,4 @@
-import type { IndexResponse, RepoStatus, DocSection } from "@/types";
+import type { IndexResponse, RepoStatus, DocSection, FileNode } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -50,6 +50,16 @@ export async function getDocs(repoId: string, regenerate?: boolean): Promise<{ s
     : `${API_BASE}/api/docs/${repoId}`;
   const res = await fetch(url);
   return handleResponse<{ sections: DocSection[] }>(res);
+}
+
+export async function getRepoFiles(repoId: string): Promise<FileNode[]> {
+  const res = await fetch(`${API_BASE}/api/repo/${repoId}/files`);
+  return handleResponse<FileNode[]>(res);
+}
+
+export async function getFileContent(repoId: string, path: string): Promise<{ path: string; content: string }> {
+  const res = await fetch(`${API_BASE}/api/repo/${repoId}/file?path=${encodeURIComponent(path)}`);
+  return handleResponse<{ path: string; content: string }>(res);
 }
 
 export function getIndexedRepos(): string[] {

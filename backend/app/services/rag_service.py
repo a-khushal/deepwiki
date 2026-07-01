@@ -1,8 +1,9 @@
+import asyncio
 import json
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 import structlog
 
 from app.config import settings
@@ -66,11 +67,13 @@ class LLMProvider(ABC):
 
 class OpenAILLM(LLMProvider):
     def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.model = settings.llm_model
 
     def generate(self, prompt: str, system_prompt: str) -> str:
-        response = self.client.chat.completions.create(
+        import openai
+        sync = openai.OpenAI(api_key=settings.openai_api_key)
+        response = sync.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -81,7 +84,7 @@ class OpenAILLM(LLMProvider):
         return response.choices[0].message.content or ""
 
     async def generate_stream(self, prompt: str, system_prompt: str) -> AsyncGenerator[str, None]:
-        stream = self.client.chat.completions.create(
+        stream = await self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -90,7 +93,7 @@ class OpenAILLM(LLMProvider):
             temperature=0.1,
             stream=True,
         )
-        for chunk in stream:
+        async for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
             if delta and delta.content:
                 yield delta.content
@@ -161,13 +164,17 @@ class RagService:
     async def answer_stream(
         self, repo_id: str, question: str, history: Optional[list[Message]] = None
     ) -> AsyncGenerator[str, None]:
-        question_embedding = self.embedding_service.embed_query(question)
+        question_embedding = await asyncio.to_thread(self.embedding_service.embed_query, question)
 
-        results = self.vector_service.query(
-            repo_id=repo_id,
-            query_embedding=question_embedding,
-            top_k=settings.max_context_chunks,
+        results = await asyncio.to_thread(
+            self.vector_service.query,
+            repo_id, question_embedding, settings.max_context_chunks,
         )
+
+        if not results:
+            yield json.dumps({"type": "chunk", "content": "I couldn't find any relevant code in this repository to answer your question."})
+            yield json.dumps({"type": "done"})
+            return
 
         context_parts = []
         sources = []
@@ -200,7 +207,9 @@ class RagService:
             question=question,
         )
 
-        yield json.dumps({"type": "sources", "sources": sources}) + "\n"
+        yield json.dumps({"type": "sources", "sources": sources})
 
         async for token in self._llm.generate_stream(prompt, ""):
-            yield json.dumps({"type": "token", "content": token}) + "\n"
+            yield json.dumps({"type": "chunk", "content": token})
+
+        yield json.dumps({"type": "done"})
